@@ -64,7 +64,7 @@ func createGitLabIssue(title, description string) error {
 		return err
 	}
 	if exists {
-		log.Println("Issue already exists in GitLab:", title)
+		log.Printf("Issue already exists in GitLab: %s", title)
 		return nil
 	}
 
@@ -93,7 +93,7 @@ func createGitLabIssue(title, description string) error {
 	var createdIssue GitLabIssue
 	body, _ := io.ReadAll(resp.Body)
 	if err := json.Unmarshal(body, &createdIssue); err != nil {
-		log.Println("Issue created:", title)
+		log.Printf("Issue created: %s", title)
 	} else {
 		log.Printf("Issue created: %s (IID: %d)", title, createdIssue.IID)
 	}
