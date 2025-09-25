@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 // Checks if there is an open issue with the same title
@@ -20,7 +21,8 @@ func issueExists(title string) (bool, error) {
 		return false, fmt.Errorf("missing GITLAB_TOKEN or GITLAB_PROJECT_ID in environment variables")
 	}
 
-	projectsApiURL := fmt.Sprintf("%s/projects/%s/issues?state=opened&search=%s", apiUrl, projectID, url.QueryEscape(title))
+	projectsApiURL := fmt.Sprintf("%s/projects/%s/issues?state=opened&search=%s&in=title", apiUrl, projectID, url.QueryEscape(title))
+	// curl -H "PRIVATE-TOKEN: $GITLAB_TOKEN" "$GITLAB_API_URL/projects/$GITLAB_PROJECT_ID/issues?state=opened&search=$title&in=title"
 	req, _ := http.NewRequest("GET", projectsApiURL, nil)
 	req.Header.Set("PRIVATE-TOKEN", gitlabToken)
 
@@ -42,7 +44,8 @@ func issueExists(title string) (bool, error) {
 	}
 
 	for _, issue := range issues {
-		if issue.Title == title {
+		log.Printf("DEBUG: Checking issue with title: %s", issue.Title)
+		if strings.TrimSpace(issue.Title) == strings.TrimSpace(title) {
 			return true, nil
 		}
 	}
@@ -87,6 +90,12 @@ func createGitLabIssue(title, description string) error {
 		return fmt.Errorf("error creating issue, status: %s", resp.Status)
 	}
 
-	log.Println("Issue created:", title)
+	var createdIssue GitLabIssue
+	body, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(body, &createdIssue); err != nil {
+		log.Println("Issue created:", title)
+	} else {
+		log.Printf("Issue created: %s (IID: %d)", title, createdIssue.IID)
+	}
 	return nil
 }

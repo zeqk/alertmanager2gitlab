@@ -84,7 +84,16 @@ curl -X POST http://localhost:8080/alert \
         },
         "startsAt": "2025-09-25T05:00:00Z"
       }
-    ]
+    ],
+    "commonLabels": {
+      "alertname": "HighCPU",
+      "instance": "server1"
+    },
+    "commonAnnotations": {
+      "summary": "CPU usage above 90%",
+      "description": "CPU usage on server1 exceeded threshold",
+      "exception": "None"
+    }
   }'
 ```
 

@@ -1,0 +1,11 @@
+{{ .CommonAnnotations.description }}
+
+```
+{{ .CommonAnnotations.exception }}
+```
+
+URL: {{ .ExternalURL }}
+
+Common Labels:
+{{ range $key, $value := .CommonLabels }}- {{$key}}: {{$value}}
+{{ end }}
