@@ -1,19 +1,18 @@
 package main
 
-
 // https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
 
 type AlertmanagerPayload struct {
-	Version            string            `json:"version"`
-	GroupKey           string            `json:"groupKey"`
-	TruncatedAlerts    int               `json:"truncatedAlerts"`
-	Status             string            `json:"status"`
-	Receiver           string            `json:"receiver"`
-	GroupLabels        map[string]string `json:"groupLabels"`
-	CommonLabels       map[string]string `json:"commonLabels"`
-	CommonAnnotations  map[string]string `json:"commonAnnotations"`
-	ExternalURL        string            `json:"externalURL"`
-	Alerts             []Alert           `json:"alerts"`
+	Version           string            `json:"version"`
+	GroupKey          string            `json:"groupKey"`
+	TruncatedAlerts   int               `json:"truncatedAlerts"`
+	Status            string            `json:"status"`
+	Receiver          string            `json:"receiver"`
+	GroupLabels       map[string]string `json:"groupLabels"`
+	CommonLabels      map[string]string `json:"commonLabels"`
+	CommonAnnotations map[string]string `json:"commonAnnotations"`
+	ExternalURL       string            `json:"externalURL"`
+	Alerts            []Alert           `json:"alerts"`
 }
 
 type Alert struct {

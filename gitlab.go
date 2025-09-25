@@ -4,20 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 )
 
-// Verifica si existe un issue abierto con el mismo título
+// Checks if there is an open issue with the same title
 func issueExists(title string) (bool, error) {
 	gitlabToken := os.Getenv("GITLAB_TOKEN")
 	projectID := os.Getenv("GITLAB_PROJECT_ID")
 	apiUrl := os.Getenv("GITLAB_API_URL")
 	if gitlabToken == "" || projectID == "" {
-		return false, fmt.Errorf("Falta GITLAB_TOKEN o GITLAB_PROJECT_ID en variables de entorno")
+		return false, fmt.Errorf("missing GITLAB_TOKEN or GITLAB_PROJECT_ID in environment variables")
 	}
 
 	projectsApiURL := fmt.Sprintf("%s/projects/%s/issues?state=opened&search=%s", apiUrl, projectID, url.QueryEscape(title))
@@ -32,10 +32,10 @@ func issueExists(title string) (bool, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		return false, fmt.Errorf("Error consultando issues, status: %s", resp.Status)
+		return false, fmt.Errorf("error fetching issues, status: %s", resp.Status)
 	}
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	var issues []GitLabIssue
 	if err := json.Unmarshal(body, &issues); err != nil {
 		return false, err
@@ -50,7 +50,7 @@ func issueExists(title string) (bool, error) {
 	return false, nil
 }
 
-// Create gitlab issue
+// Creates a GitLab issue
 func createGitLabIssue(title, description string) error {
 	gitlabToken := os.Getenv("GITLAB_TOKEN")
 	projectID := os.Getenv("GITLAB_PROJECT_ID")
@@ -61,7 +61,7 @@ func createGitLabIssue(title, description string) error {
 		return err
 	}
 	if exists {
-		log.Println("Issue ya existe en GitLab:", title)
+		log.Println("Issue already exists in GitLab:", title)
 		return nil
 	}
 
@@ -84,9 +84,9 @@ func createGitLabIssue(title, description string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("Error creando issue, status: %s", resp.Status)
+		return fmt.Errorf("error creating issue, status: %s", resp.Status)
 	}
 
-	log.Println("Issue creado:", title)
+	log.Println("Issue created:", title)
 	return nil
 }
