@@ -107,3 +107,44 @@ receivers:
     webhook_configs:
       - url: 'http://alert2gitlab:8080/alert'
 ```
+
+## 📝 Customizing Issue Templates
+
+This service uses Go templates to generate the title and description for each GitLab issue. By default, the templates are located in the `templates/` directory:
+
+- `templates/title.tmpl`: Defines the issue title. Example:
+  ```gotmpl
+  {{ .CommonAnnotations.summary }}
+  ```
+- `templates/description.tmpl`: Defines the issue description. Example:
+  ```gotmpl
+  {{ .CommonAnnotations.description }}
+  
+  ```
+  {{ .CommonAnnotations.exception }}
+  ```
+  
+  URL: {{ .ExternalURL }}
+  
+  Common Labels:
+  {{ range $key, $value := .CommonLabels }}- {{$key}}: {{$value}}
+  {{ end }}
+  ```
+
+You can modify these templates to fit your needs. The templates use the [Go text/template](https://pkg.go.dev/text/template) syntax and have access to all fields in the Alertmanager webhook payload.
+
+### Mounting Custom Templates in Docker
+
+To use your own templates, mount them into the container at startup:
+
+```bash
+docker run -d \
+  -e GITLAB_TOKEN="glpat-xxxxxx" \
+  -e GITLAB_PROJECT_ID="123456" \
+  -e GITLAB_API_URL="https://gitlab.com/api/v4" \
+  -p 8080:8080 \
+  -v /path/to/your/templates:/app/templates:ro \
+  alertmanager2gitlab
+```
+
+Replace `/path/to/your/templates` with the directory containing your `title.tmpl` and `description.tmpl` files. The application will automatically load these templates at runtime.
