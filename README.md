@@ -143,7 +143,7 @@ docker run -d \
   -e GITLAB_PROJECT_ID="123456" \
   -e GITLAB_API_URL="https://gitlab.com/api/v4" \
   -p 8080:8080 \
-  -v /path/to/your/templates:/app/templates:ro \
+  -v /path/to/your/templates:/templates:ro \
   alertmanager2gitlab
 ```
 

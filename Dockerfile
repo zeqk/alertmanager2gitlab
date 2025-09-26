@@ -1,32 +1,33 @@
-# Etapa 1: Build
+# Stage 1: Build
 FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Copiar archivos go
+# Copy Go files
 # COPY go.mod go.sum ./
 # RUN go mod download
 
 COPY . .
 
-# Compilar binario
-RUN go build -o /alert-gitlab
+# Build binary
+RUN go build -o /alertmanager2gitlab
 
-# Etapa 2: Runtime ligero
+# Stage 2: Lightweight runtime
 FROM alpine:latest
 
 WORKDIR /
 
-# Copiar binario compilado
-COPY --from=builder /alert-gitlab /alert-gitlab
+# Copy compiled binary
+COPY --from=builder /alertmanager2gitlab /alertmanager2gitlab
+COPY --from=builder /app/templates /templates
 
-# Variables de entorno (pueden ser redefinidas al correr el contenedor)
+# Environment variables (can be overridden when running the container)
 ENV GITLAB_TOKEN=""
 ENV GITLAB_PROJECT_ID=""
 ENV GITLAB_API_URL="https://gitlab.com/api/v4"
 
-# Exponer puerto
+# Expose port
 EXPOSE 8080
 
-# Ejecutar la app
-CMD ["/alert-gitlab"]
+# Run the app
+CMD ["/alertmanager2gitlab"]
