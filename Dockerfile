@@ -4,8 +4,8 @@ FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
 # Copy Go files
-# COPY go.mod go.sum ./
-# RUN go mod download
+COPY go.mod go.sum ./
+RUN go mod download
 
 COPY . .
 
@@ -13,7 +13,7 @@ COPY . .
 RUN go build -o /alertmanager2gitlab
 
 # Stage 2: Lightweight runtime
-FROM alpine:latest
+FROM alpine:3.22
 
 WORKDIR /
 
@@ -25,6 +25,7 @@ COPY --from=builder /app/templates /templates
 ENV GITLAB_TOKEN=""
 ENV GITLAB_PROJECT_ID=""
 ENV GITLAB_API_URL="https://gitlab.com/api/v4"
+ENV LOG_LEVEL="info"
 
 # Expose port
 EXPOSE 8080

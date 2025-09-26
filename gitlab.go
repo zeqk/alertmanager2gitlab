@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Checks if there is an open issue with the same title
@@ -44,7 +45,7 @@ func issueExists(title string) (bool, error) {
 	}
 
 	for _, issue := range issues {
-		log.Printf("DEBUG: Checking issue with title: %s", issue.Title)
+		log.Debugf("Checking issue with title: %s", issue.Title)
 		if strings.TrimSpace(issue.Title) == strings.TrimSpace(title) {
 			return true, nil
 		}
@@ -61,10 +62,11 @@ func createGitLabIssue(title, description string) error {
 
 	exists, err := issueExists(title)
 	if err != nil {
+		log.Error("Error verificando si existe el issue: ", err)
 		return err
 	}
 	if exists {
-		log.Printf("Issue already exists in GitLab: %s", title)
+		log.Warnf("Issue ya existe en GitLab: %s", title)
 		return nil
 	}
 
@@ -75,6 +77,8 @@ func createGitLabIssue(title, description string) error {
 	}
 	jsonPayload, _ := json.Marshal(payload)
 
+	log.Debugf("Creando issue en GitLab con payload: %s", string(jsonPayload))
+
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("PRIVATE-TOKEN", gitlabToken)
@@ -82,20 +86,22 @@ func createGitLabIssue(title, description string) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Error("Error creando el issue en GitLab: ", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
+		log.Error("Error creando el issue, status: ", resp.Status)
 		return fmt.Errorf("error creating issue, status: %s", resp.Status)
 	}
 
 	var createdIssue GitLabIssue
 	body, _ := io.ReadAll(resp.Body)
 	if err := json.Unmarshal(body, &createdIssue); err != nil {
-		log.Printf("Issue created: %s", title)
+		log.Infof("Issue creado: %s", title)
 	} else {
-		log.Printf("Issue created: %s (IID: %d)", title, createdIssue.IID)
+		log.Infof("Issue creado: %s (IID: %d)", title, createdIssue.IID)
 	}
 	return nil
 }
