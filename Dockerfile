@@ -23,7 +23,7 @@ COPY --from=builder /app/templates /templates
 
 # Environment variables (can be overridden when running the container)
 ENV GITLAB_TOKEN=""
-ENV GITLAB_PROJECT_ID=""
+ENV GITLAB_DEFAULT_PROJECT_ID=""
 ENV GITLAB_API_URL="https://gitlab.com/api/v4"
 ENV LOG_LEVEL="info"
 

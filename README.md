@@ -32,13 +32,14 @@ go build -o alertmanager2gitlab
 This service uses the following environment variables:
 
 - `GITLAB_TOKEN` → GitLab personal access token with permissions to create issues.
-- `GITLAB_PROJECT_ID` → GitLab project ID where issues will be created.
+- `GITLAB_DEFAULT_PROJECT_ID` → GitLab project ID where issues will be created.
 - `GITLAB_API_URL` → (Default `https://gitlab.com/api/v4`)
+- `LOG_LEVEL` → (Default `info`)
 
 Example:
 ```bash
 export GITLAB_TOKEN="glpat-xxxxxx"
-export GITLAB_PROJECT_ID="123456"
+export GITLAB_DEFAULT_PROJECT_ID="123456"
 export GITLAB_API_URL="https://gitlab.com/api/v4"
 ```
 
@@ -56,7 +57,7 @@ Run the container:
 ```bash
 docker run -d \
   -e GITLAB_TOKEN="glpat-xxxxxx" \
-  -e GITLAB_PROJECT_ID="123456" \
+  -e GITLAB_DEFAULT_PROJECT_ID="123456" \
   -e GITLAB_API_URL="https://gitlab.com/api/v4" \
   -p 8080:8080 \
   alertmanager2gitlab
@@ -140,7 +141,7 @@ To use your own templates, mount them into the container at startup:
 ```bash
 docker run -d \
   -e GITLAB_TOKEN="glpat-xxxxxx" \
-  -e GITLAB_PROJECT_ID="123456" \
+  -e GITLAB_DEFAULT_PROJECT_ID="123456" \
   -e GITLAB_API_URL="https://gitlab.com/api/v4" \
   -p 8080:8080 \
   -v /path/to/your/templates:/templates:ro \
