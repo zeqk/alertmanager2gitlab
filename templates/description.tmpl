@@ -1,7 +1,7 @@
 {{ .CommonAnnotations.description }}
 
-```
-{{ .CommonAnnotations.exception }}
+```json
+{{ index .Alerts 0 "Annotations" "message" }}
 ```
 
 URL: {{ .ExternalURL }}
