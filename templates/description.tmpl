@@ -1,10 +1,8 @@
-{{ .CommonAnnotations.description }}
+{{ .CommonAnnotations.summary }}
 
 ```json
 {{ index (index .Alerts 0).Annotations "description" }}
 ```
-
-URL: {{ .ExternalURL }}
 
 Common Labels:
 {{ range $key, $value := .CommonLabels }}- {{$key}}: {{$value}}
