@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -70,13 +71,16 @@ func alertHandler(w http.ResponseWriter, r *http.Request) {
 	title := strings.TrimSpace(titleBuf.String())
 	desc := descBuf.String()
 
-	// Get project_path from CommonLabels if present
-	projectPath := ""
-	if val, ok := payload.CommonLabels["project_path"]; ok {
-		projectPath = val
+	// Get project_ref from CommonLabels (project_id, project_path) if present
+	projectRef := os.Getenv("GITLAB_DEFAULT_PROJECT_ID")
+	if val, ok := payload.CommonLabels["project_id"]; ok {
+		projectRef = val
+	} else if val, ok := payload.CommonLabels["project_path"]; ok {
+		projectRef = url.PathEscape(val)
 	}
+	log.Debugf("Using project_ref: %s", projectRef)
 
-	if err := createGitLabIssue(title, desc, projectPath); err != nil {
+	if err := createGitLabIssue(title, desc, projectRef); err != nil {
 		log.Error("Error creating issue: ", err)
 	}
 

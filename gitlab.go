@@ -51,17 +51,9 @@ func issueExists(title, projectRef string) (bool, error) {
 }
 
 // Creates a GitLab issue
-func createGitLabIssue(title, description, projectPath string) error {
+func createGitLabIssue(title, description, projectRef string) error {
 	gitlabToken := os.Getenv("GITLAB_TOKEN")
-	projectID := os.Getenv("GITLAB_DEFAULT_PROJECT_ID")
 	apiUrl := os.Getenv("GITLAB_API_URL")
-
-	var projectRef string
-	if projectPath != "" {
-		projectRef = url.PathEscape(projectPath)
-	} else {
-		projectRef = projectID
-	}
 
 	exists, err := issueExists(title, projectRef)
 	if err != nil {
