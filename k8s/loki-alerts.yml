@@ -1,0 +1,20 @@
+rules:
+  - alert: BackendErrorDetected
+    expr: |
+      sum by(project_path, request_path, Exception, username, trace_id) 
+      (
+        count_over_time(
+          {container_name!="traefik", container_name=~".*backend.*"} 
+          |= `Exception` 
+          | json 
+          | json request_path="Scopes[2].RequestPath", username="Scopes[3].Username", trace_id="Scopes[0].TraceId"
+          | __error__=`` [5m]
+        )
+      ) > 0
+    keep_firing_for: 1m
+    labels:
+      severity: info
+      source: loki
+    annotations:
+      description: "An exception was detected in project {{ $labels.project_path }}"
+      summary: "{{ $labels.Exception }}"

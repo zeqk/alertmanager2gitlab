@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager2gitlab-templates
+  labels:
+    app: alertmanager2gitlab
+data:
+  description.tmpl: |
+    {{ .CommonAnnotations.summary }}
+
+    ```json
+    {{ index (index .Alerts 0).Annotations "description" }}
+    ```
+
+    Common Labels:
+    {{ range $key, $value := .CommonLabels }}- {{$key}}: {{$value}}
+    {{ end }}
+
+    /label ~"🐞 bug" 
+  title.tmpl: |
+    {{ .CommonAnnotations.summary }}

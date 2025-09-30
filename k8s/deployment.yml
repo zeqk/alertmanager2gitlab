@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager2gitlab
+  labels:
+    app: alertmanager2gitlab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager2gitlab
+  template:
+    metadata:
+      labels:
+        app: alertmanager2gitlab
+    spec:
+      containers:
+        - name: alertmanager2gitlab
+          image: zeqk/alertmanager2gitlab:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: GITLAB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-config
+                  key: gitlab_token
+            - name: GITLAB_DEFAULT_PROJECT_ID
+              value: "1" # Replace with your default project ID
+            - name: GITLAB_API_URL
+              value: "https://gitlab.com/api/v4"
+            - name: LOG_LEVEL
+              value: "debug"
+          volumeMounts:
+            - name: templates
+              mountPath: /templates
+      volumes:
+        - name: templates
+          configMap:
+            name: alertmanager2gitlab-templates

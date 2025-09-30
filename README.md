@@ -1,5 +1,8 @@
 # alertmanager2gitlab
 
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-greenlogo=github)](https://github.com/zeqk/alertmanager2gitlab)
+[![Docker Pulls](https://img.shields.io/docker/pulls/zeqk/alertmanager2gitlab?logo=docker)](https://hub.docker.com/r/zeqk/alertmanager2gitlab)
+
 A service written in **Go** that receives alerts from **Prometheus Alertmanager** via webhook and automatically creates **issues in GitLab** using the REST API.
 
 ## 🚀 Features
@@ -12,7 +15,7 @@ A service written in **Go** that receives alerts from **Prometheus Alertmanager*
 
 ---
 
-## 📦 Installation
+## 📦 Development
 
 ### 1. Clone the repository
 
@@ -41,6 +44,7 @@ Example:
 export GITLAB_TOKEN="glpat-xxxxxx"
 export GITLAB_DEFAULT_PROJECT_ID="123456"
 export GITLAB_API_URL="https://gitlab.com/api/v4"
+export LOG_LEVEL="debug"
 ```
 
 ## 🐳 Run with Docker
@@ -88,7 +92,8 @@ curl -X POST http://localhost:8080/alert \
     ],
     "commonLabels": {
       "alertname": "HighCPU",
-      "instance": "server1"
+      "instance": "server1",
+      "project_path": "dev/my-project"
     },
     "commonAnnotations": {
       "summary": "CPU usage above 90%",
@@ -149,3 +154,27 @@ docker run -d \
 ```
 
 Replace `/path/to/your/templates` with the directory containing your `title.tmpl` and `description.tmpl` files. The application will automatically load these templates at runtime.
+
+## 🏷️ Dynamic Project Selection via CommonLabels
+
+You can control in which GitLab project the issue will be created by including `project_id` or `project_path` in the `commonLabels` of the Alertmanager payload. This allows dynamic routing of issues to different projects per alert.
+
+- If `project_id` is present in `commonLabels`, it will be used as the target project for the issue.
+- If `project_id` is not present but `project_path` is, the issue will be created in the project with that path.
+- If neither is present, the default project specified by the `GITLAB_DEFAULT_PROJECT_ID` environment variable will be used.
+
+**Example Alert Payload:**
+```json
+{
+  "commonLabels": {
+    "project_path": "dev/my-project"
+  }
+}
+```
+
+**Note:**
+- `project_path` should be the full path of the project in GitLab (e.g., `group/subgroup/project`).
+- `project_id` should be the numeric ID of the project.
+- If both are present, `project_id` takes precedence.
+
+This feature is useful for multi-tenant setups or when routing alerts to different projects based on alert content.

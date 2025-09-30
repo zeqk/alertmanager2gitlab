@@ -1,0 +1,5 @@
+receivers:
+  - name: 'gitlab-webhook'
+    webhook_configs:
+      - url: 'http://alert2gitlab:8080/alert'
+        send_resolved: true
