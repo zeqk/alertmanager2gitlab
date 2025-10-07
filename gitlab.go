@@ -9,12 +9,13 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"text/template"
 
 	log "github.com/sirupsen/logrus"
 )
 
-// Checks if there is an open issue with the same title
-func issueExists(title, projectRef string) (bool, error) {
+// Get issues by title
+func getIssuesByTitle(title, projectRef string) ([]GitLabIssue, error) {
 	gitlabToken := os.Getenv("GITLAB_TOKEN")
 	apiUrl := os.Getenv("GITLAB_API_URL")
 
@@ -26,51 +27,107 @@ func issueExists(title, projectRef string) (bool, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		return false, fmt.Errorf("error fetching issues, status: %s", resp.Status)
+		return nil, fmt.Errorf("error fetching issues, status: %s", resp.Status)
 	}
 
 	body, _ := io.ReadAll(resp.Body)
 	var issues []GitLabIssue
 	if err := json.Unmarshal(body, &issues); err != nil {
-		return false, err
+		return nil, err
 	}
 
-	for _, issue := range issues {
-		log.Debugf("Checking issue with title: %s", issue.Title)
-		if strings.TrimSpace(issue.Title) == strings.TrimSpace(title) {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return issues, nil
 }
 
 // Creates a GitLab issue
-func createGitLabIssue(title, description, projectRef string) error {
+func createGitLabIssue(title string, payload AlertmanagerPayload, projectRef string) error {
 	gitlabToken := os.Getenv("GITLAB_TOKEN")
 	apiUrl := os.Getenv("GITLAB_API_URL")
 
-	exists, err := issueExists(title, projectRef)
+	issues, err := getIssuesByTitle(title, projectRef)
 	if err != nil {
 		log.Error("Error checking if issue exists: ", err)
 		return err
 	}
-	if exists {
+	client := &http.Client{}
+
+	if len(issues) > 0 {
 		log.Warnf("Issue already exists in GitLab: %s", title)
+		// Render comment from template and add to existing issue
+		commentTemplateBytes, err := os.ReadFile("templates/comment.tmpl")
+		if err != nil {
+			log.Error("Error reading comment template: ", err)
+			return nil
+		}
+		commentTmpl, err := template.New("comment").Parse(string(commentTemplateBytes))
+		if err != nil {
+			log.Error("Error parsing comment template: ", err)
+			return nil
+		}
+		var commentBuf bytes.Buffer
+		if err := commentTmpl.Execute(&commentBuf, payload); err != nil {
+			log.Error("Error executing comment template: ", err)
+			return nil
+		}
+		comment := commentBuf.String()
+
+		// Find the existing issue IID
+		issueIID := issues[0].IID
+
+		// Post the comment
+		commentApiURL := fmt.Sprintf("%s/projects/%s/issues/%d/notes", apiUrl, projectRef, issueIID)
+		commentPayload := map[string]string{"body": comment}
+		commentJson, _ := json.Marshal(commentPayload)
+		commentReq, _ := http.NewRequest("POST", commentApiURL, bytes.NewBuffer(commentJson))
+		commentReq.Header.Set("Content-Type", "application/json")
+		commentReq.Header.Set("PRIVATE-TOKEN", gitlabToken)
+		commentResp, err := client.Do(commentReq)
+		if err != nil {
+			log.Error("Error posting comment to existing issue: ", err)
+			return nil
+		}
+		defer commentResp.Body.Close()
+		if commentResp.StatusCode >= 300 {
+			log.Error("Error posting comment, status: ", commentResp.Status)
+			return nil
+		}
+		log.Infof("Comment added to existing issue: %s (IID: %d)", title, issueIID)
 		return nil
 	}
 
-	url := fmt.Sprintf("%s/projects/%s/issues", apiUrl, projectRef)
-	payload := map[string]string{
-		"title":       title,
-		"description": description,
+	// Read and render description template
+	descTemplateBytes, err := os.ReadFile("templates/description.tmpl")
+	if err != nil {
+		log.Error("Error reading description template: ", err)
+		return err
 	}
-	jsonPayload, _ := json.Marshal(payload)
+	funcMap := template.FuncMap{
+		"replace": strings.ReplaceAll,
+		"upper":   strings.ToUpper,
+	}
+	descTmpl, err := template.New("description").Funcs(funcMap).Parse(string(descTemplateBytes))
+	if err != nil {
+		log.Error("Error parsing description template: ", err)
+		return err
+	}
+	var descBuf bytes.Buffer
+	if err := descTmpl.Execute(&descBuf, payload); err != nil {
+		log.Error("Error executing description template: ", err)
+		return err
+	}
+	desc := descBuf.String()
+
+	url := fmt.Sprintf("%s/projects/%s/issues", apiUrl, projectRef)
+	payloadMap := map[string]string{
+		"title":       title,
+		"description": desc,
+	}
+	jsonPayload, _ := json.Marshal(payloadMap)
 
 	log.Debugf("Creating issue in GitLab with payload: %s", string(jsonPayload))
 
@@ -78,7 +135,6 @@ func createGitLabIssue(title, description, projectRef string) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("PRIVATE-TOKEN", gitlabToken)
 
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Error("Error creating issue in GitLab: ", err)

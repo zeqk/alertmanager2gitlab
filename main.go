@@ -20,17 +20,11 @@ func alertHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load templates from files
+	// Load title template from file
 	titleTemplateBytes, err := os.ReadFile("templates/title.tmpl")
 	if err != nil {
 		log.Error("Error reading title template: ", err)
 		http.Error(w, "Error reading title template", http.StatusInternalServerError)
-		return
-	}
-	descTemplateBytes, err := os.ReadFile("templates/description.tmpl")
-	if err != nil {
-		log.Error("Error reading description template: ", err)
-		http.Error(w, "Error reading description template", http.StatusInternalServerError)
 		return
 	}
 
@@ -45,12 +39,6 @@ func alertHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error parsing title template", http.StatusInternalServerError)
 		return
 	}
-	descTmpl, err := template.New("description").Funcs(funcMap).Parse(string(descTemplateBytes))
-	if err != nil {
-		log.Error("Error parsing description template: ", err)
-		http.Error(w, "Error parsing description template", http.StatusInternalServerError)
-		return
-	}
 
 	var payload AlertmanagerPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -59,17 +47,12 @@ func alertHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var titleBuf, descBuf bytes.Buffer
-
+	var titleBuf bytes.Buffer
 	if err := titleTmpl.Execute(&titleBuf, payload); err != nil {
 		log.Error("Error executing title template: ", err)
 	}
-	if err := descTmpl.Execute(&descBuf, payload); err != nil {
-		log.Error("Error executing description template: ", err)
-	}
 
 	title := strings.TrimSpace(titleBuf.String())
-	desc := descBuf.String()
 
 	// Get project_ref from CommonLabels (project_id, project_path) if present
 	projectRef := os.Getenv("GITLAB_DEFAULT_PROJECT_ID")
@@ -80,7 +63,7 @@ func alertHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Debugf("Using project_ref: %s", projectRef)
 
-	if err := createGitLabIssue(title, desc, projectRef); err != nil {
+	if err := createGitLabIssue(title, payload, projectRef); err != nil {
 		log.Error("Error creating issue: ", err)
 	}
 
