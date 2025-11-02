@@ -57,7 +57,10 @@ func createGitLabIssue(title string, payload AlertmanagerPayload, projectRef str
 	client := &http.Client{}
 
 	if len(issues) > 0 {
-		log.Warnf("Issue already exists in GitLab: %s", title)
+		// Find the existing issue IID
+		issueIID := issues[0].IID
+
+		log.Warnf("Issue already exists in GitLab: %s (project: %s, IID: %d)", title, projectRef, issueIID)
 		// Render comment from template and add to existing issue
 		commentTemplateBytes, err := os.ReadFile("templates/comment.tmpl")
 		if err != nil {
@@ -76,9 +79,6 @@ func createGitLabIssue(title string, payload AlertmanagerPayload, projectRef str
 		}
 		comment := commentBuf.String()
 
-		// Find the existing issue IID
-		issueIID := issues[0].IID
-
 		// Post the comment
 		commentApiURL := fmt.Sprintf("%s/projects/%s/issues/%d/notes", apiUrl, projectRef, issueIID)
 		commentPayload := map[string]string{"body": comment}
@@ -88,7 +88,7 @@ func createGitLabIssue(title string, payload AlertmanagerPayload, projectRef str
 		commentReq.Header.Set("PRIVATE-TOKEN", gitlabToken)
 		commentResp, err := client.Do(commentReq)
 		if err != nil {
-			log.Error("Error posting comment to existing issue: ", err)
+			log.Error("Error posting comment to existing issue:", err)
 			return nil
 		}
 		defer commentResp.Body.Close()
