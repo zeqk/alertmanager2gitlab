@@ -59,44 +59,49 @@ func createGitLabIssue(title string, payload AlertmanagerPayload, projectRef str
 	if len(issues) > 0 {
 		// Find the existing issue IID
 		issueIID := issues[0].IID
-
 		log.Warnf("Issue already exists in GitLab: %s (project: %s, IID: %d)", title, projectRef, issueIID)
-		// Render comment from template and add to existing issue
-		commentTemplateBytes, err := os.ReadFile("templates/comment.tmpl")
-		if err != nil {
-			log.Error("Error reading comment template: ", err)
-			return nil
-		}
-		commentTmpl, err := template.New("comment").Parse(string(commentTemplateBytes))
-		if err != nil {
-			log.Error("Error parsing comment template: ", err)
-			return nil
-		}
-		var commentBuf bytes.Buffer
-		if err := commentTmpl.Execute(&commentBuf, payload); err != nil {
-			log.Error("Error executing comment template: ", err)
-			return nil
-		}
-		comment := commentBuf.String()
 
-		// Post the comment
-		commentApiURL := fmt.Sprintf("%s/projects/%s/issues/%d/notes", apiUrl, projectRef, issueIID)
-		commentPayload := map[string]string{"body": comment}
-		commentJson, _ := json.Marshal(commentPayload)
-		commentReq, _ := http.NewRequest("POST", commentApiURL, bytes.NewBuffer(commentJson))
-		commentReq.Header.Set("Content-Type", "application/json")
-		commentReq.Header.Set("PRIVATE-TOKEN", gitlabToken)
-		commentResp, err := client.Do(commentReq)
-		if err != nil {
-			log.Error("Error posting comment to existing issue:", err)
-			return nil
+		// Solo agregar comentarios si GITLAB_COMMENT_ENABLED es "true"
+		if os.Getenv("GITLAB_COMMENT_ENABLED") == "true" {
+			// Render comment from template and add to existing issue
+			commentTemplateBytes, err := os.ReadFile("templates/comment.tmpl")
+			if err != nil {
+				log.Error("Error reading comment template: ", err)
+				return nil
+			}
+			commentTmpl, err := template.New("comment").Parse(string(commentTemplateBytes))
+			if err != nil {
+				log.Error("Error parsing comment template: ", err)
+				return nil
+			}
+			var commentBuf bytes.Buffer
+			if err := commentTmpl.Execute(&commentBuf, payload); err != nil {
+				log.Error("Error executing comment template: ", err)
+				return nil
+			}
+			comment := commentBuf.String()
+
+			// Post the comment
+			commentApiURL := fmt.Sprintf("%s/projects/%s/issues/%d/notes", apiUrl, projectRef, issueIID)
+			commentPayload := map[string]string{"body": comment}
+			commentJson, _ := json.Marshal(commentPayload)
+			commentReq, _ := http.NewRequest("POST", commentApiURL, bytes.NewBuffer(commentJson))
+			commentReq.Header.Set("Content-Type", "application/json")
+			commentReq.Header.Set("PRIVATE-TOKEN", gitlabToken)
+			commentResp, err := client.Do(commentReq)
+			if err != nil {
+				log.Error("Error posting comment to existing issue:", err)
+				return nil
+			}
+			defer commentResp.Body.Close()
+			if commentResp.StatusCode >= 300 {
+				log.Error("Error posting comment, status: ", commentResp.Status)
+				return nil
+			}
+			log.Infof("Comment added to existing issue: %s (IID: %d)", title, issueIID)
+		} else {
+			log.Debugf("GITLAB_COMMENT_ENABLED is not 'true', skipping comment on existing issue: %s (IID: %d)", title, issueIID)
 		}
-		defer commentResp.Body.Close()
-		if commentResp.StatusCode >= 300 {
-			log.Error("Error posting comment, status: ", commentResp.Status)
-			return nil
-		}
-		log.Infof("Comment added to existing issue: %s (IID: %d)", title, issueIID)
 		return nil
 	}
 

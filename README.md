@@ -37,6 +37,7 @@ This service uses the following environment variables:
 - `GITLAB_TOKEN` → GitLab personal access token with permissions to create issues.
 - `GITLAB_DEFAULT_PROJECT_ID` → GitLab project ID where issues will be created.
 - `GITLAB_API_URL` → (Default `https://gitlab.com/api/v4`)
+- `GITLAB_COMMENT_ENABLED` → Add comments when an issue is repeated, by title (Default `false`)
 - `LOG_LEVEL` → (Default `info`)
 
 Example:

@@ -25,6 +25,7 @@ COPY --from=builder /app/templates /templates
 ENV GITLAB_TOKEN=""
 ENV GITLAB_DEFAULT_PROJECT_ID=""
 ENV GITLAB_API_URL="https://gitlab.com/api/v4"
+ENV GITLAB_COMMENT_ENABLED="false"
 ENV LOG_LEVEL="info"
 
 # Expose port
