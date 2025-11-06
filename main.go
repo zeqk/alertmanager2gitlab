@@ -33,6 +33,18 @@ func alertHandler(w http.ResponseWriter, r *http.Request) {
 	go func(bodyData []byte) {
 		rBody := bytes.NewReader(bodyData)
 
+		var payload AlertmanagerPayload
+		if err := json.NewDecoder(rBody).Decode(&payload); err != nil {
+			log.Warn("Invalid JSON: ", err)
+			return
+		}
+
+		// if status is firing
+		if strings.ToLower(payload.Status) != "firing" {
+			log.Infof("Alert status is not 'firing' (%s), ignoring", payload.Status)
+			return
+		}
+
 		// Load title template from file
 		titleTemplateBytes, err := os.ReadFile("templates/title.tmpl")
 		if err != nil {
@@ -48,12 +60,6 @@ func alertHandler(w http.ResponseWriter, r *http.Request) {
 		titleTmpl, err := template.New("title").Funcs(funcMap).Parse(string(titleTemplateBytes))
 		if err != nil {
 			log.Error("Error parsing title template: ", err)
-			return
-		}
-
-		var payload AlertmanagerPayload
-		if err := json.NewDecoder(rBody).Decode(&payload); err != nil {
-			log.Warn("Invalid JSON: ", err)
 			return
 		}
 
