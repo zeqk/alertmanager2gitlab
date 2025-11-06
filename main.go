@@ -20,55 +20,66 @@ func alertHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load title template from file
-	titleTemplateBytes, err := os.ReadFile("templates/title.tmpl")
+	// Clone body
+	var bodyCopy bytes.Buffer
+	_, err := bodyCopy.ReadFrom(r.Body)
 	if err != nil {
-		log.Error("Error reading title template: ", err)
-		http.Error(w, "Error reading title template", http.StatusInternalServerError)
+		log.Error("Error reading request body: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Alert received but error reading body"))
 		return
 	}
 
-	// Custom functions
-	funcMap := template.FuncMap{
-		"replace": strings.ReplaceAll,
-		"upper":   strings.ToUpper,
-	}
-	titleTmpl, err := template.New("title").Funcs(funcMap).Parse(string(titleTemplateBytes))
-	if err != nil {
-		log.Error("Error parsing title template: ", err)
-		http.Error(w, "Error parsing title template", http.StatusInternalServerError)
-		return
-	}
+	go func(bodyData []byte) {
+		rBody := bytes.NewReader(bodyData)
 
-	var payload AlertmanagerPayload
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		log.Warn("Invalid JSON: ", err)
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
+		// Load title template from file
+		titleTemplateBytes, err := os.ReadFile("templates/title.tmpl")
+		if err != nil {
+			log.Error("Error reading title template: ", err)
+			return
+		}
 
-	var titleBuf bytes.Buffer
-	if err := titleTmpl.Execute(&titleBuf, payload); err != nil {
-		log.Error("Error executing title template: ", err)
-	}
+		// Custom functions
+		funcMap := template.FuncMap{
+			"replace": strings.ReplaceAll,
+			"upper":   strings.ToUpper,
+		}
+		titleTmpl, err := template.New("title").Funcs(funcMap).Parse(string(titleTemplateBytes))
+		if err != nil {
+			log.Error("Error parsing title template: ", err)
+			return
+		}
 
-	title := strings.TrimSpace(titleBuf.String())
+		var payload AlertmanagerPayload
+		if err := json.NewDecoder(rBody).Decode(&payload); err != nil {
+			log.Warn("Invalid JSON: ", err)
+			return
+		}
 
-	// Get project_ref from CommonLabels (project_id, project_path) if present
-	projectRef := os.Getenv("GITLAB_DEFAULT_PROJECT_ID")
-	if val, ok := payload.CommonLabels["project_id"]; ok {
-		projectRef = val
-	} else if val, ok := payload.CommonLabels["project_path"]; ok {
-		projectRef = url.PathEscape(val)
-	}
-	log.Debugf("Using project_ref: %s", projectRef)
+		var titleBuf bytes.Buffer
+		if err := titleTmpl.Execute(&titleBuf, payload); err != nil {
+			log.Error("Error executing title template: ", err)
+		}
 
-	if err := createGitLabIssue(title, payload, projectRef); err != nil {
-		log.Error("Error creating issue: ", err)
-	}
+		title := strings.TrimSpace(titleBuf.String())
 
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write([]byte("Alert received and processed")); err != nil {
+		// Get project_ref from CommonLabels (project_id, project_path) if present
+		projectRef := os.Getenv("GITLAB_DEFAULT_PROJECT_ID")
+		if val, ok := payload.CommonLabels["project_id"]; ok {
+			projectRef = val
+		} else if val, ok := payload.CommonLabels["project_path"]; ok {
+			projectRef = url.PathEscape(val)
+		}
+		log.Debugf("Using project_ref: %s", projectRef)
+
+		if err := createGitLabIssue(title, payload, projectRef); err != nil {
+			log.Error("Error creating issue: ", err)
+		}
+	}(bodyCopy.Bytes())
+
+	w.WriteHeader(http.StatusAccepted)
+	if _, err := w.Write([]byte("Alert received and processing in background")); err != nil {
 		log.Error("Error writing response: ", err)
 	}
 }
