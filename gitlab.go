@@ -57,8 +57,18 @@ func createGitLabIssue(title string, payload AlertmanagerPayload, projectRef str
 	client := &http.Client{}
 
 	if len(issues) > 0 {
-		// Find the existing issue IID
-		issueIID := issues[0].IID
+		// Find the existing issue IID with exactly the same title
+		var issueIID int
+		for _, issue := range issues {
+			if issue.Title == title {
+				issueIID = issue.IID
+				break
+			}
+		}
+		if issueIID == 0 {
+			log.Warnf("Issue with title '%s' not found in GitLab: (project: %s)", title, projectRef)
+			return nil
+		}
 		log.Warnf("Issue already exists in GitLab: %s (project: %s, IID: %d)", title, projectRef, issueIID)
 
 		// Solo agregar comentarios si GITLAB_COMMENT_ENABLED es "true"
