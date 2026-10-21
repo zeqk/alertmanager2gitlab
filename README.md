@@ -34,7 +34,7 @@ go build -o alertmanager2gitlab
 
 This service uses the following environment variables:
 
-- `GITLAB_TOKEN` → GitLab personal access token with permissions to create issues.
+- `GITLAB_TOKEN` → GitLab fine-grained personal access token. See the required permissions below.
 - `GITLAB_DEFAULT_PROJECT_ID` → GitLab project ID where issues will be created.
 - `GITLAB_API_URL` → (Default `https://gitlab.com/api/v4`)
 - `GITLAB_COMMENT_ENABLED` → Add comments when an issue is repeated, by title (Default `false`)
@@ -47,6 +47,17 @@ export GITLAB_DEFAULT_PROJECT_ID="123456"
 export GITLAB_API_URL="https://gitlab.com/api/v4"
 export LOG_LEVEL="debug"
 ```
+
+### GitLab fine-grained personal access token permissions
+
+Create a **fine-grained personal access token** and grant permissions for the **Work Item** resource on the project(s) where alerts can create issues:
+
+- **Read** → required to search open issues and avoid creating duplicates (`GET /projects/:id/issues`).
+- **Create** → required to create issues (`POST /projects/:id/issues`). This permission also allows adding notes to existing issues when `GITLAB_COMMENT_ENABLED=true` (`POST /projects/:id/issues/:issue_iid/notes`).
+
+You can limit the token's project access to the target project(s). If using dynamic project selection via `project_id` or `project_path`, the token can include every project the service may target; otherwise, it can be scoped to the default project. The token owner must also have GitLab access that allows these actions on each project. No broader permissions are needed by this service.
+
+For details, see GitLab's documentation on [fine-grained personal access tokens](https://docs.gitlab.com/auth/tokens/fine_grained_access_tokens/) and [fine-grained REST API permissions](https://docs.gitlab.com/auth/tokens/fine_grained_access_tokens_rest/).
 
 ## 🐳 Run with Docker
 
